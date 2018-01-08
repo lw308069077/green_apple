@@ -34,14 +34,12 @@ function change(str,file) {
     let field = str.split('<正文>=')[0] + '<正文>='
     //处理前的内容部分
     let content = str.split('<正文>=')[1]
-
-    //接收处理后的数据
-    let newField = '',
-        newContent = ''
+    //处理后的内容
+    let endField = '',endContent=''
     //用于判断正题是否为空
     let isNull = false
     
-    //处理字段部分(去除标题前后空格、去除字段中带有的'（''）')
+    //处理字段部分(去除标题前后空格)
     let fieldList = field.split('\n')
     fieldList.forEach((item,index) => {
         //判断正题是否为空
@@ -49,7 +47,6 @@ function change(str,file) {
             isNull = true
         }
         //字段'='号后是否有内容
-        // let title = ''
         if(item.split('>=')[1]){
             //有头版头条先清除
             if(item.split('>=')[0].indexOf('版条') > -1) {
@@ -59,11 +56,6 @@ function change(str,file) {
             if(item.split('>=')[0].indexOf('文章作者') > -1) {
                 item = '<文章作者>='
             }
-            //去除标题前后空格、多余符号
-            // title = item.split('>=')[1].trim()
-            // title = title.replace('（','')
-            // title = title.replace('）','')
-            // item = item.split('>=')[0] + '>=' + title
 
             //图片作者或者图片说明去除摄字
             if(item.split('>=')[0].indexOf('<图片') > -1 && item.split('>=')[1].indexOf('摄') > -1) {
@@ -76,10 +68,11 @@ function change(str,file) {
                 }
             }
         }
+
         if(fieldList.length-1 !== index) {
-            newField += item + '\r\n'
+            endField += item + '\r\n'
         }else{
-            newField += item
+            endField += item
         }
     })
 
@@ -97,9 +90,9 @@ function change(str,file) {
             item = '　　' + item.trim()
         }
         if(contentList.length-1 !== index) {
-            newContent += item + '\r\n'
+            endContent += item + '\r\n'
         }else{
-            newContent += item
+            endContent += item
         }
         //添加文章作者
         if(hasAuthor(item,index,isNull) != ''){
@@ -108,14 +101,14 @@ function change(str,file) {
     })
 
     //最终输出的文本内容
-    let res = newField + newContent
+    let res = endField + endContent
     //添加头版头条
     if(file.split('.')[0].slice(-10,-7) === '001' && file.split('.')[0].slice(-2) === '01'){
         res = res.replace("<版条>=", "<版条>=头版头条")
     }
     //添加作者
     res = res.replace("<文章作者>=", "<文章作者>=" + authors.join('　'))
-
+console.log(res)
     return res
 }
 
