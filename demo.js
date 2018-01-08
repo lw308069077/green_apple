@@ -70,7 +70,7 @@ function change(str,file) {
         }
 
         if(fieldList.length-1 !== index) {
-            endField += item + '\r\n'
+            endField += item + '\n'
         }else{
             endField += item
         }
@@ -90,7 +90,7 @@ function change(str,file) {
             item = '　　' + item.trim()
         }
         if(contentList.length-1 !== index) {
-            endContent += item + '\r\n'
+            endContent += item + '\n'
         }else{
             endContent += item
         }
