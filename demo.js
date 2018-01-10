@@ -14,16 +14,16 @@ fs.readdir(dir, (err, fileList) => {
             let str = iconv.decode(text, 'gbk')
             //修改文件内容
             let res = change(str, file)
-            // //写入新的文件夹
-            // if(!fs.existsSync('./news')) {
-            //     fs.mkdirSync('./news')
-            // }
-            // //编码
-            // res = iconv.encode(res, 'gbk')
-            // fs.writeFile(('./news/' + file), res, 'binary', (err) => {  
-            //     if(err)  
-            //         console.log("fail " + err) 
-            // })
+            //写入新的文件夹
+            if(!fs.existsSync('./news')) {
+                fs.mkdirSync('./news')
+            }
+            //编码
+            res = iconv.encode(res, 'gbk')
+            fs.writeFile(('./news/' + file), res, 'binary', (err) => {  
+                if(err)  
+                    console.log("fail " + err) 
+            })
         })
     }
 })
@@ -34,9 +34,9 @@ function change(str, file) {
     let field = str.split('<正文>=')[0] + '<正文>='
     //处理前的内容部分
     let content = str.split('<正文>=')[1]
+
     //处理后的内容
-    let endField = '',
-        endContent = ''
+    let endField = '',endContent = ''
     //用于判断正题是否为空
     let isNull = false
 
@@ -54,32 +54,28 @@ function change(str, file) {
             item = item.split('>=')[0] + '>=' + item.split('>=')[1].trim()
 
             //有文章作者先清除
-            if (item.split('>=')[0].indexOf('文章作者') > -1) {
-                item = '<文章作者>='
+            // if (item.split('>=')[0].indexOf('文章作者') > -1) {
+            //     item = '<文章作者>='
+            // }
+
+            //图片作者或者图片说明去除摄字
+            if(item.split('>=')[0].indexOf('<图片') > -1 && item.split('>=')[1].indexOf('摄') > -1) {
+                if(item.split('>=')[0].indexOf('<图片作者') > -1){
+                    item = item.split('>=')[0] + '>=' + item.split('>=')[1].replace('摄','').trim()
+                // console.log(item)
+                }else if(item.split('>=')[0].indexOf('<图片说明') > -1){
+                // console.log(file,item)
+                }
             }
-
-
-            // console.log(item)
-            //     //有头版头条先清除
-            //     if(item.split('>=')[0].indexOf('版条') > -1) {
-            //         item = '<版条>='
-            //     }
-
-
-            //     //图片作者或者图片说明去除摄字
-            //     if(item.split('>=')[0].indexOf('<图片') > -1 && item.split('>=')[1].indexOf('摄') > -1) {
-            //         if(item.split('>=')[0].indexOf('<图片作者') > -1){
-            //             item = item.split('>=')[0] + '>=' + item.split('>=')[1].replace('摄','').trim()
-            //         // console.log(item)
-            //         }else if(item.split('>=')[0].indexOf('<图片说明') > -1){
-            //         // console.log(file,item)
-            //         }
-            //     }
         }
 
         //合并行
         if(fieldList.length-1 !== index) {
-            endField += item + '\n'
+            if(index === 0) {
+                endField += item + '\n'    
+            }else{
+                endField += item + '\r\n'
+            }
         }else{
             endField += item
         }
@@ -90,7 +86,7 @@ function change(str, file) {
     let contentList = content.split('\n')
     contentList.forEach((item, index) => {
         //内容段首空格处理
-        if (item) {
+        if (item.length > 1) {
             item = '　　' + item.trim()
         }
 
@@ -102,76 +98,80 @@ function change(str, file) {
         
         //合并行
         if(contentList.length-1 !== index) {
-            endContent += item + '\n'
+            if(index === 0 || item.length < 2) {
+                endContent += item + '\n'
+            }else{
+                endContent += item + '\r\n'
+            }
         }else{
             endContent += item
         }
 
-        // //添加文章作者
-        // if(hasAuthor(item,index,isNull) != ''){
-        //     authors = authors.concat(hasAuthor(item,index,isNull))
-        // }
+        //添加文章作者
+        if(hasAuthor(item,index,isNull,file) != ''){
+            authors = authors.concat(hasAuthor(item,index,isNull,file))
+        }
     })
 
     //最终输出的文本内容
-    let res = endField + '\n' + endContent
-    //     //添加头版头条
-    //     if(file.split('.')[0].slice(-10,-7) === '001' && file.split('.')[0].slice(-2) === '01'){
-    //         res = res.replace("<版条>=", "<版条>=头版头条")
-    //     }
+    let res = endField + endContent
+
     //图片新闻
-    // if (!isNull && item.indexOf('<img src=') > -1) {
-    //     res = res.replace("<正题>=", "<正题>=图片新闻")
-    // }
+    if (!isNull && res.indexOf('<img src=') > -1) {
+        res = res.replace("<正题>=", "<正题>=图片新闻")
+    }
+
     //添加作者
     res = res.replace("<文章作者>=", "<文章作者>=" + authors.join('　'))
-    console.log(res)
-    //     return res
+    // console.log(res)
+    return res
 }
 
 
 
 
 //是否包含作者
-function hasAuthor(lineStr, index, isNull) {
-    // let author = []
-    // let picAuthor = []
-
-    // //检测首行是否是作者
-    // if(index === 1 && isNull && !/[，|。|？|！|《|<|img|：|社论|据新华社|新华社|上接|（|）|\d]/.test(lineStr)) {
-    //     if(lineStr.length < 20 && lineStr.indexOf('　') > -1) {
+function hasAuthor(lineStr, index, isNull, file) {
+    let author = []
+    // 检测首行是否是作者
+    // if(index === 1 && isNull && !/[，|；|、|。|？|！|”|《|<|img|：|社论|据新华社|新华社|上接|（|）|\d]/.test(lineStr) && lineStr.length > 1){
+    //     if(lineStr.indexOf('　') != -1 && lineStr.length < 10){
     //         lineStr = lineStr.replace('●','').trim()
+    //         lineStr = lineStr.replace('□','').trim()
     //         author.push(lineStr)
     //     }
     // }
 
-    // //检测行尾带）内的是不是作者
-    // if (lineStr.trim().search(/）/g) > -1) {
-    //     if (lineStr.trim().lastIndexOf('）') === lineStr.trim().length - 1) {
-    //         let at = lineStr.trim().substring(lineStr.trim().lastIndexOf('（')+1,lineStr.trim().length - 1)
-    //         if(!/\d|新华社发|新华社电|下转|上接|摘自|见图|传真|照片|，/.test(at) && at.length){
-    //             author.push(at)
-    //         }
-    //     }
-    // }
-
-    // //检测。号结尾后是否还有内容，有的话是否是文章作者
+    //检测行尾带）内的是不是作者
+    if (lineStr.trim().search(/）/g) > -1) {
+        if (lineStr.trim().lastIndexOf('）') === lineStr.trim().length - 1) {
+            let at = lineStr.trim().substring(lineStr.trim().lastIndexOf('（')+1,lineStr.trim().length - 1)
+            if(!/\d|新华社发|新华社电|下转|上接|摘自|见图|传真|照片|未完|待续|供稿，/.test(at) && at.length){
+                author.push(at)
+            }
+        }
+    }
+    //检测。号结尾后是否还有内容，有的话是否是文章作者
     // if(lineStr.trim().lastIndexOf('。') !== -1){
     //     if(lineStr.trim().lastIndexOf('。') !== lineStr.trim().length - 1) {
     //         //。号后面的内容
     //         let lastText = lineStr.trim().substring(lineStr.trim().lastIndexOf('。')+1,lineStr.trim().length).trim()
-
-    //         if(lastText.indexOf('（') !== -1) {
-    //             // console.log('包含有括号的不用加入')
-    //         }else if(lastText.indexOf('摄') !== -1){
-    //             // console.log('可能是图片作者')
-    //         }else{
-    //             //内容是不是汉字
-    //             if(/^[\\u4E00-\\u9FFF]{1,20}$/g.test(lastText))
-    //                 author.push(lastText)
+    //         if(lastText.indexOf('　摄') == -1) {
+    //             // console.log(file,lastText)
+    //             if(lastText.indexOf('　') !== -1 || authorChecked(lastText))
+    //             console.log(file,lastText,authorChecked(lastText))
     //         }
+
+    //         // if(lastText.indexOf('（') !== -1) {
+    //         //     // console.log('包含有括号的不用加入')
+    //         // }else if(lastText.indexOf('摄') !== -1){
+    //         //     // console.log('可能是图片作者')
+    //         // }else{
+    //         //     //内容是不是汉字
+    //         //     if(/^[\\u4E00-\\u9FFF]{1,20}$/g.test(lastText))
+    //         //         author.push(lastText)
+    //         // }
     //     }
     // }
-
-    // return author
+    return author
 }
