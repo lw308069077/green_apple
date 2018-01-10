@@ -43,10 +43,16 @@ function change(str, file) {
     //处理字段部分(去除标题前后空格)
     let fieldList = field.split('\n')
     fieldList.forEach((item, index) => {
+        //去除字段中的特殊符号
+        item = item.replace('■','')
+        item = item.replace('●','')
+        item = item.replace('□','')
+
         //判断正题是否为空
         if (item.indexOf('<正题>=') > -1 && item.split('>=')[1].length > 1) {
             isNull = true
         }
+        
 
         //字段'='号后是否有内容
         if (item.split('>=')[1]) {
@@ -91,10 +97,10 @@ function change(str, file) {
         }
 
         //本报讯后加空格
-        if (item.indexOf('本报讯') > -1) {
-            item = item.replace('本报讯　', '本报讯')
-            item = item.replace('本报讯', '本报讯　')
-        }
+        // if (item.indexOf('本报讯') > -1) {
+        //     item = item.replace('本报讯　', '本报讯')
+        //     item = item.replace('本报讯', '本报讯　')
+        // }
         
         //合并行
         if(contentList.length-1 !== index) {
@@ -114,11 +120,20 @@ function change(str, file) {
     })
 
     //最终输出的文本内容
+    if(endContent.length<6){
+        endContent = '\r\n' + '　　（参见版面）'
+        console.log(file+"================="+endContent.length+"===================")
+    }
     let res = endField + endContent
 
-    //图片新闻
+    //<正题>=图片新闻
     if (!isNull && res.indexOf('<img src=') > -1) {
         res = res.replace("<正题>=", "<正题>=图片新闻")
+    }
+
+    //<正题>=编辑
+    if(!isNull && res.indexOf('编辑：') > -1){
+        res = res.replace("<正题>=", "<正题>=编辑")
     }
 
     //添加作者
@@ -146,7 +161,7 @@ function hasAuthor(lineStr, index, isNull, file) {
     if (lineStr.trim().search(/）/g) > -1) {
         if (lineStr.trim().lastIndexOf('）') === lineStr.trim().length - 1) {
             let at = lineStr.trim().substring(lineStr.trim().lastIndexOf('（')+1,lineStr.trim().length - 1)
-            if(!/\d|新华社发|新华社电|下转|上接|摘自|见图|传真|照片|未完|待续|供稿，/.test(at) && at.length){
+            if(!/\d|新华社发|新华社电|下转|上接|摘自|见图|传真|照片|未完|待续|供稿|仅供|，/.test(at) && at.length){
                 author.push(at)
             }
         }
