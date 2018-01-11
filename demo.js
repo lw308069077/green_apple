@@ -9,24 +9,36 @@ fs.readdir(dir, (err, fileList) => {
     } else {
         //遍历文件
         fileList.forEach(file => {
-            //解码
-            let text = fs.readFileSync((dir + '/' + file), 'binary')
-            let str = iconv.decode(text, 'gbk')
-            //修改文件内容
-            let res = change(str, file)
-            //写入新的文件夹
-            if(!fs.existsSync('./news')) {
-                fs.mkdirSync('./news')
-            }
-            //编码
-            res = iconv.encode(res, 'gbk')
-            fs.writeFile(('./news/' + file), res, 'binary', (err) => {  
-                if(err)  
-                    console.log("fail " + err) 
-            })
+            //修改文本
+            let res = change(readTxt(file), file)
+            //写文件
+            writeTxt(file,res)
         })
     }
 })
+
+//读txt文本
+function readTxt(file) {
+    //解码
+    let text = fs.readFileSync((dir + '/' + file), 'binary')
+    let str = iconv.decode(text, 'gbk')
+
+    return str
+}
+
+//写txt文本
+function writeTxt(file,res) {
+    //写入新的文件夹
+    if(!fs.existsSync('./news')) {
+        fs.mkdirSync('./news')
+    }
+    //编码
+    let str = iconv.encode(res, 'gbk')
+    fs.writeFile(('./news/' + file), str, 'binary', (err) => {  
+        if(err)  
+            console.log("fail " + err) 
+    })
+}
 
 //修改文本内容
 function change(str, file) {
@@ -39,6 +51,10 @@ function change(str, file) {
     let endField = '',endContent = ''
     //用于判断正题是否为空
     let isNull = false
+
+    //处理内容部分
+    let authors = []
+    let picAuthors = []
 
     //处理字段部分(去除标题前后空格)
     let fieldList = field.split('\n')
@@ -59,19 +75,35 @@ function change(str, file) {
             //去除<***>=后的前后空格
             item = item.split('>=')[0] + '>=' + item.split('>=')[1].trim()
 
+            // //有图片作者先清除
+            // if (item.split('>=')[0].indexOf('图片作者') > -1) {
+            //     item = '<图片作者>='
+            // }
+
             //有文章作者先清除
             // if (item.split('>=')[0].indexOf('文章作者') > -1) {
             //     item = '<文章作者>='
             // }
 
             //图片作者或者图片说明去除摄字
-            if(item.split('>=')[0].indexOf('<图片') > -1 && item.split('>=')[1].indexOf('摄') > -1) {
-                if(item.split('>=')[0].indexOf('<图片作者') > -1){
-                    item = item.split('>=')[0] + '>=' + item.split('>=')[1].replace('摄','').trim()
-                // console.log(item)
-                }else if(item.split('>=')[0].indexOf('<图片说明') > -1){
-                // console.log(file,item)
-                }
+            // if(item.split('>=')[0].indexOf('<图片') > -1 && item.split('>=')[1].indexOf('摄') > -1) {
+            //     if(item.split('>=')[0].indexOf('<图片作者') > -1){
+            //         item = item.split('>=')[0] + '>=' + item.split('>=')[1].replace('摄','').trim()
+            //     // console.log(item)
+            //     }else if(item.split('>=')[0].indexOf('<图片说明') > -1){
+            //     // console.log(file,item)
+            //     }
+            // }
+
+            if(/<图片.+摄$/.test(item.trim())){
+                item = item.replace('摄','').trim()
+
+                // picAuthors.push(item.trim().substring(item.trim().lastIndexOf('。')+1,item.trim().length).trim())
+
+                // debug(file+":\r\n"+item+"\r\n")
+                // item = item.replace('摄','').trim().split('　')[1]
+                // console.log(file+"========="+item.replace('摄','').trim().split('。')[1])
+                //lineStr.trim().indexOf('。')+1,lineStr.trim().length
             }
         }
 
@@ -87,12 +119,11 @@ function change(str, file) {
         }
     })
 
-    //处理内容部分
-    let authors = []
+    
     let contentList = content.split('\n')
     contentList.forEach((item, index) => {
         //内容段首空格处理
-        if (item.length > 1) {
+        if (index !==0 && (contentList.length-1) !== index) {
             item = '　　' + item.trim()
         }
 
@@ -120,29 +151,29 @@ function change(str, file) {
     })
 
     //最终输出的文本内容
-    if(endContent.length<6){
+    if(endContent.length<8){
         endContent = '\r\n' + '　　（参见版面）'
-        console.log(file+"================="+endContent.length+"===================")
     }
     let res = endField + endContent
-
     //<正题>=图片新闻
     if (!isNull && res.indexOf('<img src=') > -1) {
         res = res.replace("<正题>=", "<正题>=图片新闻")
     }
-
     //<正题>=编辑
     if(!isNull && res.indexOf('编辑：') > -1){
         res = res.replace("<正题>=", "<正题>=编辑")
     }
-
+    if(!isNull && res.indexOf('责编：') > -1){
+        res = res.replace("<正题>=", "<正题>=编辑")
+    }
     //添加作者
     res = res.replace("<文章作者>=", "<文章作者>=" + authors.join('　'))
+
+    //添加图片作者
+    // res = res.replace("<图片作者>=", "<图片作者>=" + picAuthors.join('　'))
     // console.log(res)
     return res
 }
-
-
 
 
 //是否包含作者
@@ -166,6 +197,21 @@ function hasAuthor(lineStr, index, isNull, file) {
             }
         }
     }
+
+    //检测行尾带'　　'内的是不是作者
+    // if(lineStr.trim().search(/　/g) > -1) {
+    //     console.log(file,lineStr+'\r\n')
+
+    //     let lastText = lineStr.trim().substring(lineStr.trim().indexOf('　')+1,lineStr.trim().length).trim()
+    //     // console.log("=============="+lastText)
+    //     let str = ''
+    //     if(!/[A-Za-z0-9]|[，|：|；|、|-|。|？|！|”|《|<|img|：|社论|据新华社|新华社|新华社　发|上接|本报综合|（一）|（二）|（三）|（四）]/.test(lastText)){
+    //         str += file + ":　　"　+ lineStr +'\r\n' + "=======作者=======:"+lastText + "\r\n"
+    //         debug(str)
+    //     }
+
+    // }
+
     //检测。号结尾后是否还有内容，有的话是否是文章作者
     // if(lineStr.trim().lastIndexOf('。') !== -1){
     //     if(lineStr.trim().lastIndexOf('。') !== lineStr.trim().length - 1) {
@@ -189,4 +235,15 @@ function hasAuthor(lineStr, index, isNull, file) {
     //     }
     // }
     return author
+}
+
+//测试输出文件
+function log(res) {
+    //编码
+    let str = iconv.encode(res, 'gbk')
+
+    fs.appendFile(('./news/log.txt'), str, 'binary', (err) => {  
+        if(err)  
+            console.log("fail " + err) 
+    })
 }
