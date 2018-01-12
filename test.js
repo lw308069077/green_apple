@@ -40,6 +40,7 @@ function change(str, file) {
     let endField = '', endContent = ''
     //用于判断正题是否为空
     let isNull = false
+    let isAut = false
     //处理内容部分
     let authors = [], picAuthors = []
 
@@ -54,6 +55,26 @@ function change(str, file) {
         if (item.indexOf('<正题>=') > -1 && item.split('>=')[1].length > 1) {
             isNull = true
         }
+        //判断文章作者是否为空
+        if (item.indexOf('<文章作者>=') > -1 && item.split('>=')[1].length > 1) {
+            isAut = true
+            // if(item.indexOf('、') > -1) {
+            //     item = item.replace('、', '　')
+            // }
+            // if(item.indexOf('／文') > -1) {
+            //     item = item.replace('／文', '')
+            // }
+            // if(item.indexOf('＼文') > -1) {
+            //     item = item.replace('＼文', '')
+            // }
+            // if(item.indexOf('　著') > -1) {
+            //     item = item.replace('　著', '')
+            // }
+            // if(item.indexOf('（') > -1) {
+            //     item = item.substring(item.lastIndexOf('（')+1,item.length - 1)
+            // }
+        }
+
         //字段'='号后是否有内容
         if (item.split('>=')[1]) {
             //去除<***>=后的前后空格
@@ -93,8 +114,8 @@ function change(str, file) {
         }
 
         //添加文章作者
-        if (hasAuthor(item, index, isNull, file) != '') {
-            authors = authors.concat(hasAuthor(item, index, isNull, file))
+        if (hasAuthor(item, index, isNull, isAut, file) != '') {
+            authors = authors.concat(hasAuthor(item, index, isNull, isAut, file))
         }
     })
 
@@ -114,7 +135,10 @@ function change(str, file) {
         }
     }
     //添加作者
-    res = res.replace("<文章作者>=", "<文章作者>=" + authors.join('　'))
+
+    if(authors.length < 6) {
+        res = res.replace("<文章作者>=", "<文章作者>=" + authors.join('　'))
+    }
 
     //添加图片作者
     // res = res.replace("<图片作者>=", "<图片作者>=" + picAuthors.join('　'))
@@ -125,7 +149,7 @@ function change(str, file) {
 /**
  * 查找作者
  */
-function hasAuthor(lineStr, index, isNull, file) {
+function hasAuthor(lineStr, index, isNull, isAut, file) {
     let author = []
     
     //讯（讯　（电（电　（里的作者
@@ -143,7 +167,27 @@ function hasAuthor(lineStr, index, isNull, file) {
     //行尾的作者
     if(/[　]|／文|＼文/g.test(lineStr.trim())) {
         let aut = lineStr.trim().substring(lineStr.trim().lastIndexOf('。') + 1, lineStr.trim().length).trim()
-        log(file + "==========\r\n" + lineStr + '\r\n' + '【' + aut + '】' + '\r\n')
+        if(aut.length > 0 && !/\d{1,n}|[a-zA-Z]|？|”|：|:|，|《|％|＿|·|本报综合|据新华社|据新华社电|新华社　发|新华社发|新华社摄|综合消息|信息时报发|新华社／法新|新华社／路透|新华社供|　摄|／摄/i.test(aut) && !isAut){
+            
+            if(aut.indexOf('、') > -1) {
+                aut = aut.replace('、', '　')
+            }
+            if(aut.indexOf('／文') > -1) {
+                aut = aut.replace('／文', '')
+            }
+            if(aut.indexOf('＼文') > -1) {
+                aut = aut.replace('＼文', '')
+            }
+            if(aut.indexOf('　著') > -1) {
+                aut = aut.replace('　著', '')
+            }
+            if(aut.indexOf('（') > -1) {
+                aut = aut.substring(aut.lastIndexOf('（')+1,aut.length - 1)
+            }
+            if(aut.length < 12) {
+                author.push(aut)
+            }
+        }
     }
 
     return author
