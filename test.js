@@ -51,6 +51,10 @@ function change(str, file) {
         if (/■|●|□/g.test(item)) {
             item = item.replace(/■|●|□/g, '').trim()
         }
+        //去除<版名>=中的　(空格)
+        if (item.indexOf('<版名>=') > -1 && item.indexOf('　') > -1) {
+            item = item.replace('　','')
+        }
         //判断正题是否为空
         if (item.indexOf('<正题>=') > -1 && item.split('>=')[1].length > 1) {
             isNull = true
@@ -135,7 +139,6 @@ function change(str, file) {
         }
     }
     //添加作者
-
     if(authors.length < 6) {
         res = res.replace("<文章作者>=", "<文章作者>=" + authors.join('　'))
     }
@@ -168,7 +171,7 @@ function hasAuthor(lineStr, index, isNull, isAut, file) {
     if(/[　]|／文|＼文/g.test(lineStr.trim())) {
         let aut = lineStr.trim().substring(lineStr.trim().lastIndexOf('。') + 1, lineStr.trim().length).trim()
         if(aut.length > 0 && !/\d{1,n}|[a-zA-Z]|？|”|：|:|，|《|％|＿|·|本报综合|据新华社|据新华社电|新华社　发|新华社发|新华社摄|综合消息|信息时报发|新华社／法新|新华社／路透|新华社供|　摄|／摄/i.test(aut) && !isAut){
-            
+
             if(aut.indexOf('、') > -1) {
                 aut = aut.replace('、', '　')
             }
@@ -184,7 +187,7 @@ function hasAuthor(lineStr, index, isNull, isAut, file) {
             if(aut.indexOf('（') > -1) {
                 aut = aut.substring(aut.lastIndexOf('（')+1,aut.length - 1)
             }
-            if(aut.length < 12) {
+            if(aut.length < 14) {
                 author.push(aut)
             }
         }
